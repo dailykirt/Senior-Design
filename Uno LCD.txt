@@ -1,0 +1,23 @@
+TECHNICAL DETAILS
+
+2.8" diagonal color touchscreen TFT
+
+240x320 resolution, 18-bit (262,000) color - our library uses 16 bit color mode
+
+ILI9341 (datasheet) controller with built in video RAM buffer
+
+STMPE610 touch screen controller
+
+High speed SPI display with digital SPI touchscreen driver
+
+The display uses digital pins 13-9. Touchscreen controller requires digital pin 8.
+microSD pin requires digital #4.
+That means you can use digital pins 2, 3, 5, 6, 7 and analog 0-5.
+Pin 4 is available if not using the microSD.
+
+Works with any classic Arduino '328.
+Solder closed three jumpers to use the ICSP header for use with Leonardo or Mega
+Onboard 3.3V @ 300mA LDO regulator, current draw depends on usage but is about
+100mA for the display and touchscreen 4 white LED backlight.
+On by default but you can connect the transistor to a digital pin for backlight
+control 4-wire resistive touchscreen attached to STMPE610 controller
