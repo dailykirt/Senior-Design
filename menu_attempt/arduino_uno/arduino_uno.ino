@@ -4,6 +4,7 @@
 
 /*
  * This LCD is 240x320
+ * The identifier for this LCD is 
  */
 
 #if defined(__SAM3X8E__)
@@ -50,29 +51,90 @@ Adafruit_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET);
 #define PENRADIUS 3
 int oldcolor, currentcolor;
 
-//this will tell what to display on LCD 0=don't draw, 1=main menu, 2=free play, 3= guidance mode.
+//this will tell what to display on LCD 0=Nothing, 1=tutorial, 2=main menu, 3=free play, 4=guidance mode.
 int menu_mode = 0; 
 
-//this function draws the main menu
+//This function will be the introduction screen.
+void intro_screen(){
+  tft.fillScreen(MAGENTA);
+  //These two buttons will be to ask user if they want to see the tutorial
+  tft.fillRect(0,140,160,100,GREEN); //yes
+  tft.fillRect(160,140,160,100,RED); //no
+  //this is the welcome text
+  tft.setTextColor(BLACK);
+  tft.setTextSize(6);
+  tft.setCursor(10,10);
+  tft.println("Welcome!");
+  tft.setTextSize(3);
+  tft.println("Would you like");
+  tft.println("to view ");
+  tft.println("the tutorial?");
+  tft.setTextSize(4);
+  tft.setCursor(50,180);
+  tft.print("Yes");
+  tft.setCursor(220,180);
+  tft.print("No");
+//begin touch screen for yes or no
+    while(1){
+    TSPoint p = ts.getPoint();
+      // if user touches screen above a certain pressure, then register touch
+      if (p.z > MINPRESSURE && p.z < MAXPRESSURE) {
+        // scale from 0->1023 to tft.width
+        p.x = map(p.x, TS_MINX, TS_MAXX, tft.width(), 0);
+        p.y = map(p.y, TS_MINY, TS_MAXY, tft.height(), 0);
+        //go to tutorial if yes is pressed, otherwise go straight to menu 
+        if (p.x > 140 && p.y < 160){
+          //go to tutorial
+          menu_mode = 1;
+          break;
+        }else if (p.x > 140 && p.y > 160){
+            //or go straight to menu 
+          menu_mode = 2;
+          break;
+        }
+      } 
+   }
+}
 
+//this function is the tutorial screen
+void tutorial(){
+  tft.fillScreen(CYAN);
+  //make main menu button 
+  tft.fillRect(0,140,320,100,GREEN); //yes
+  tft.setCursor(20,160);
+  tft.setTextSize(4);
+  tft.print("Main Menu");
+  while(1){
+    TSPoint p = ts.getPoint();
+      // if user touches screen above a certain pressure, then register touch
+      if (p.z > MINPRESSURE && p.z < MAXPRESSURE) {
+        // scale from 0->1023 to tft.width
+        p.x = map(p.x, TS_MINX, TS_MAXX, tft.width(), 0);
+        p.y = map(p.y, TS_MINY, TS_MAXY, tft.height(), 0);
+        //if the top half of screen is pressed during main menu then switch to free play
+        if (p.x > 120){
+          menu_mode = 2;
+          break;
+        }
+      } 
+   }
+}
+
+//this function draws the main menu
 void main_menu(){
   tft.fillScreen(BLACK);
   //begin by showing user a menu. Two buttons
-  tft.fillRect(0, 0, 120, 320, GREEN);
-  tft.fillRect(120, 0, 120, 320, BLUE);
+  tft.fillRect(0, 0, 320, 120, GREEN);
+  tft.fillRect(0, 120, 320, 120, BLUE);
   
   tft.setTextColor(BLACK);
   tft.setTextSize(4);
   tft.setCursor(50,50);
-  //set rotation so text is in landscape mode
-  tft.setRotation(1);
   tft.print("Free Play");
   tft.setCursor(5,150);
   tft.print("Guidance Mode");
 
   while(1){
-    pinMode(XM, OUTPUT);
-    pinMode(YP, OUTPUT);
     TSPoint p = ts.getPoint();
       // if user touches screen above a certain pressure, then register touch
       if (p.z > MINPRESSURE && p.z < MAXPRESSURE) {
@@ -81,11 +143,11 @@ void main_menu(){
         p.y = map(p.y, TS_MINY, TS_MAXY, tft.height(), 0);
         //if the top half of screen is pressed during main menu then switch to free play
         if (p.x < 120){
-          menu_mode = 2;
+          menu_mode = 3;
           break;
         }else if (p.x > 120){
             //else switch to guidance mode
-          menu_mode = 3;
+          menu_mode = 4;
           break;
         }
       } 
@@ -103,9 +165,8 @@ void back_button(){
 void free_play(){
   tft.fillScreen(BLACK);
   back_button();
-    while(1){
-    pinMode(XM, OUTPUT);
-    pinMode(YP, OUTPUT);
+  //this is for the back button 
+  while(1){
     TSPoint p = ts.getPoint();
       // if user touches screen above a certain pressure, then register touch
       if (p.z > MINPRESSURE && p.z < MAXPRESSURE) {
@@ -113,28 +174,42 @@ void free_play(){
         p.x = map(p.x, TS_MINX, TS_MAXX, tft.width(), 0);
         p.y = map(p.y, TS_MINY, TS_MAXY, tft.height(), 0);
         //if the top half of screen is pressed during main menu then switch to free play
-        menu_mode = 1;
-        break;
+        if (p.y < 50, p.x < 50){
+          menu_mode = 2;
+          break;
+        }
       } 
    }
 }
 
 void guidance_mode(){
-  tft.reset();
-  tft.fillScreen(CYAN);
+  tft.fillScreen(YELLOW);
   back_button();
+  while(1){
+    TSPoint p = ts.getPoint();
+      // if user touches screen above a certain pressure, then register touch
+      if (p.z > MINPRESSURE && p.z < MAXPRESSURE) {
+        // scale from 0->1023 to tft.width
+        p.x = map(p.x, TS_MINX, TS_MAXX, tft.width(), 0);
+        p.y = map(p.y, TS_MINY, TS_MAXY, tft.height(), 0);
+        //if the top half of screen is pressed during main menu then switch to free play
+        if (p.y < 50, p.x < 50){
+          menu_mode = 2;
+          break;
+        }
+      } 
+   }
 }
 
 void setup(void) {
-  
   tft.reset();
   uint16_t identifier = 0x9341;
   tft.begin(identifier);
+  //set rotation so text is in landscape mode
+  tft.setRotation(1);
 
-  //draw main menu
-  main_menu(); 
-  //free_play();
- 
+  //draw introduction screen
+  intro_screen();
 }
 
 
@@ -146,17 +221,14 @@ void loop()
   
   //these series of if statements will draw the menu when a change is needed
   if (menu_mode == 1){
-    main_menu();
-    menu_mode = 0;
+    tutorial();
   }else if(menu_mode == 2){
-    free_play();
-    menu_mode = 0;
+    main_menu();
   }else if(menu_mode == 3){
+    free_play();
+  }else if(menu_mode == 4){
     guidance_mode();
-    menu_mode = 0;
   }
-
-
 }
 
 
