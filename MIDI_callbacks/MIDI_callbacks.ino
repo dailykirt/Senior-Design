@@ -26,7 +26,6 @@ void MyHandleNoteOn(byte channel, byte pitch, byte velocity) {
         index = 0; 
       }
   }
-  
 }
 
 void setup() {
