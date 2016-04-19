@@ -12,5 +12,6 @@ void loop() {
 
 void receiveEvent(int howMany) {
   byte number = Wire.read();
-  Serial.write(number);
+  //Serial.write(number);
+  Serial.println(number);
 }
