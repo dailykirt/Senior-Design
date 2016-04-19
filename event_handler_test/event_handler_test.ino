@@ -7,7 +7,6 @@
 
 EventManager gEM; //event manger object 
 
-
 // the listener is what handles the event (when analog reads higher than threshold.)
 void listener( int event, int analogVal )
 {
