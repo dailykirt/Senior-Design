@@ -1,3 +1,4 @@
+#include <StopWatch.h>
 #include <Thread.h>
 #include <ThreadController.h>
 #include <EventManager.h>
@@ -185,18 +186,31 @@ touchThread tsThread = touchThread();
 ThreadController controller = ThreadController();
 //end touch screen threads~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-//dealing with MIDI~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//dealing with MIDI~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 MIDI_CREATE_DEFAULT_INSTANCE();
+unsigned long total_duration = 0; 
+unsigned int actual_times[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
+float normalized_times[12] = {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
+float major_chroma[12] = {(1/3),0.0,0.0,0.0,0.0,(1/3),0.0,0.0,(1/3),0.0,0.0,0.0};
+float minor_chroma[12] = {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
+float best_ecludian = 0;
 
 // When MIDI in is detected the following function will....
 void MyHandleNoteOn(byte channel, byte pitch, byte velocity) {
+  if (velocity != 0){
+      MIDI.sendNoteOn(pitch, 20, 8);
+  }
+}
 
+void MyHandleNoteOff(byte channel, byte pitch, byte velocity) {
+  //if (velocity == 0){
+      MIDI.sendNoteOn(pitch, 20, 9);
+  //}
 }
 
 //end MIDI~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 void setup() {
-  Serial.begin( 9600 ); //debug
   tft.reset();
   uint16_t identifier = 0x9341;
   tft.begin(identifier);
@@ -205,18 +219,20 @@ void setup() {
   //draw introduction screen
   draw_intro();
   // Configures touchThread
-  tsThread.setInterval(50);
+  tsThread.setInterval(100);
   controller.add(&tsThread); 
   //configure function incoming MIDI calls 
-  MIDI.begin(1); // Initialize the Midi Library channel 1 
+  MIDI.begin(MIDI_CHANNEL_OMNI); // Initialize the Midi Library all channels 
+  Serial.begin(115200); //inizlize midi over serial 
   MIDI.setHandleNoteOn(MyHandleNoteOn);
+  MIDI.setHandleNoteOff(MyHandleNoteOn);
 }
 
 void loop() {
   //checks if threads need to be run then run all 
-  MIDI.read(); //check for MIDI In
   controller.run();
-   // if sharing pins, you'll need to fix the directions of the touchscreen pins
+  MIDI.read(); //check for MIDI In
+  // if sharing pins, you'll need to fix the directions of the touchscreen pins
   pinMode(XM, OUTPUT);
   pinMode(YP, OUTPUT);
  

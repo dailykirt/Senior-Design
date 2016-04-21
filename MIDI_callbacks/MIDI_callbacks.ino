@@ -18,13 +18,13 @@ void MyHandleNoteOn(byte channel, byte pitch, byte velocity) {
     //digitalWrite(LED,LOW);//Turn LED off
   }else{
       //digitalWrite(LED,HIGH);  //Turn LED on
-      //MIDI.sendNoteOn(pitch, velocity, 10);
-      //MIDI.sendNoteOff(pitch, 0, 10);
-      pitchData[index] = pitch;
-      index++;
-      if (index >= 6){
-        index = 0; 
-      }
+      MIDI.sendNoteOn(pitch, velocity, 10);
+      MIDI.sendNoteOff(pitch, 0, 10);
+      //pitchData[index] = pitch;
+      //index++;
+     // if (index >= 6){
+      //  index = 0; 
+    //  }
   }
 }
 
@@ -35,15 +35,16 @@ void setup() {
 // OMNI sets it to listen to all channels.. MIDI.begin(2) would set it
 // to respond to channel 2 notes only.
   Serial.begin(115200);
-  MIDI.setHandleNoteOn(MyHandleNoteOn); // This is important!! This command
+  MIDI.setHandleNoteOn(MIDI_CHANNEL_OMNI); // This is important!! This command
   // tells the Midi Library which function I want called when a Note ON command
   // is received. in this case it's "MyHandleNoteOn".
 }
 
 void loop() { // Main loop
   //pullup button on digital input 2
-  int sensorVal = digitalRead(2);
+  //int sensorVal = digitalRead(2);
   //if button is presssed, play back previous 6 MIDI notess
+  /*
   if (sensorVal == HIGH) {
         digitalWrite(LED,LOW);
    } else {
@@ -53,7 +54,7 @@ void loop() { // Main loop
              delay(500);
              MIDI.sendNoteOff(pitchData[i],0,2);
           }
-  }
+  } */
     // Continually check what Midi Commands have been received.
   MIDI.read();
 }
