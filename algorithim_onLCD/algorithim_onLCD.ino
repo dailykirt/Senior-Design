@@ -187,10 +187,42 @@ ThreadController controller = ThreadController();
 //end touch screen threads~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 //dealing with MIDI~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//creating note object that stores duration 
+class midiNote{
+public:
+//a notePitch from 1-12
+  int notePitch;
+  unsigned int actual_time=0;
+  float normalized_time=0.0;
+  //a timer for each octave 
+  StopWatch SWarray[3];
+  
+  //if an incoming note matches the pitch start a timer start timer
+  void setTimer(){
+      for (int i=0;i<3;i++){
+        if (SWarray[i].isRunning() == false){
+          SWarray[i].start();
+          break;
+        }
+      } 
+  }
+
+  void stopTimer(){
+      for (int i=0;i<3;i++){
+        if (SWarray[i].isRunning() == true){
+          SWarray[i].stop();
+          break;
+        }
+      //then update total note duration  
+      actual_time = SWarray[0].elapsed() + SWarray[1].elapsed() + SWarray[2].elapsed();
+    }
+  }
+};
+
+
 MIDI_CREATE_DEFAULT_INSTANCE();
 unsigned long total_duration = 0; 
-unsigned int actual_times[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
-float normalized_times[12] = {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
+midiNote midiDataArr[12];
 float major_chroma[12] = {(1/3),0.0,0.0,0.0,0.0,(1/3),0.0,0.0,(1/3),0.0,0.0,0.0};
 float minor_chroma[12] = {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
 float best_ecludian = 0;
@@ -198,17 +230,25 @@ float best_ecludian = 0;
 // When MIDI in is detected the following function will....
 void MyHandleNoteOn(byte channel, byte pitch, byte velocity) {
   if (velocity != 0){
-      MIDI.sendNoteOn(pitch, 20, 8);
+      //MIDI.sendNoteOn(pitch, 25, 8);
+      int noteFound = pitch % 12;
+      midiDataArr[noteFound].setTimer();      
   }
 }
 
 void MyHandleNoteOff(byte channel, byte pitch, byte velocity) {
-  //if (velocity == 0){
-      MIDI.sendNoteOn(pitch, 20, 9);
-  //}
+  if (velocity == 0){
+      //MIDI.sendNoteOn(pitch, 20, 9);
+      int noteFound = pitch % 12;
+      midiDataArr[noteFound].stopTimer();
+  }
 }
 
 //end MIDI~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+//Algorithim Thread~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+//end algorithim ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 void setup() {
   tft.reset();
@@ -225,7 +265,11 @@ void setup() {
   MIDI.begin(MIDI_CHANNEL_OMNI); // Initialize the Midi Library all channels 
   Serial.begin(115200); //inizlize midi over serial 
   MIDI.setHandleNoteOn(MyHandleNoteOn);
-  MIDI.setHandleNoteOff(MyHandleNoteOn);
+  MIDI.setHandleNoteOff(MyHandleNoteOff);
+  //set pitches to midi data 
+  for(int i=0;i<12;i++){
+    midiDataArr[i].notePitch = i;
+  }
 }
 
 void loop() {
