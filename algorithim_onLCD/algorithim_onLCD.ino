@@ -202,27 +202,35 @@ public:
   unsigned int actual_time=0;
   float normalized_time=0.0;
   //a timer for each octave 
-  StopWatch SWarray[3];
-  
+  //StopWatch SWarray[3];
+  StopWatch sw;
   //if an incoming note matches the pitch start a timer start timer
   void setTimer(){
+    /*
       for (int i=0;i<3;i++){
         if (SWarray[i].isRunning() == false){
           SWarray[i].start();
           break;
         }
       } 
+      */
+      sw.start();
   }
 
   void stopTimer(){
+    /*
       for (int i=0;i<3;i++){
         if (SWarray[i].isRunning() == true){
           SWarray[i].stop();
           break;
         }
+        
       //then update total note duration  
-      actual_time = SWarray[0].elapsed() + SWarray[1].elapsed() + SWarray[2].elapsed();
+     // actual_time = SWarray[0].elapsed() + SWarray[1].elapsed() + SWarray[2].elapsed();
     }
+    */
+     sw.stop();
+     actual_time = sw.elapsed();
   }
 };
 
