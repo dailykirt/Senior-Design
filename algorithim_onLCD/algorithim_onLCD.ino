@@ -114,12 +114,21 @@ void draw_free_play(){
   tft.println("Your Predicted");
   tft.println("");
   tft.println("Key:");
+  tft.println("");
   tft.println("% Right:");
 }
 
 void draw_guidance_mode(){
   tft.fillScreen(YELLOW);
   draw_back_button();
+}
+
+void draw_time(unsigned long elapsed_time){
+    tft.setCursor(75,110);
+    tft.setTextColor(WHITE);
+    tft.setTextSize(3);
+    tft.fillRect(75, 110, 160, 30, BLACK);
+    tft.println(elapsed_time);
 }
 //end of menu astetics~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -182,8 +191,6 @@ public:
 //create a touchThread
 touchThread tsThread = touchThread();
 
-// Instantiate a new ThreadController
-ThreadController controller = ThreadController();
 //end touch screen threads~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 //dealing with MIDI~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -227,18 +234,16 @@ float major_chroma[12] = {(1/3),0.0,0.0,0.0,0.0,(1/3),0.0,0.0,(1/3),0.0,0.0,0.0}
 float minor_chroma[12] = {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
 float best_ecludian = 0;
 
-// When MIDI in is detected the following function will....
+// When MIDI in is detected the following function will set a timer to find note duration
 void MyHandleNoteOn(byte channel, byte pitch, byte velocity) {
   if (velocity != 0){
-      //MIDI.sendNoteOn(pitch, 25, 8);
       int noteFound = pitch % 12;
       midiDataArr[noteFound].setTimer();      
   }
 }
-
+//then stop timer and update note duration
 void MyHandleNoteOff(byte channel, byte pitch, byte velocity) {
   if (velocity == 0){
-      //MIDI.sendNoteOn(pitch, 20, 9);
       int noteFound = pitch % 12;
       midiDataArr[noteFound].stopTimer();
   }
@@ -247,7 +252,18 @@ void MyHandleNoteOff(byte channel, byte pitch, byte velocity) {
 //end MIDI~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 //Algorithim Thread~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Thread algThread = Thread(); //make new thread
+boolean key_change = true; //used to only draw when key changes
 
+void algorithim_callback(){
+  //first update total duration 
+  unsigned long duration_sum=0;
+  for (int i=0;i<12;i++){
+    duration_sum = duration_sum + midiDataArr[i].actual_time;
+  }
+  total_duration = duration_sum;
+  key_change = true;
+}
 //end algorithim ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 void setup() {
@@ -258,9 +274,10 @@ void setup() {
   tft.setRotation(1);
   //draw introduction screen
   draw_intro();
-  // Configures touchThread
-  tsThread.setInterval(100);
-  controller.add(&tsThread); 
+  // Configures thread intervals
+  tsThread.setInterval(200);
+  algThread.onRun(algorithim_callback);
+  algThread.setInterval(1500);
   //configure function incoming MIDI calls 
   MIDI.begin(MIDI_CHANNEL_OMNI); // Initialize the Midi Library all channels 
   Serial.begin(115200); //inizlize midi over serial 
@@ -273,9 +290,11 @@ void setup() {
 }
 
 void loop() {
-  //checks if threads need to be run then run all 
-  controller.run();
   MIDI.read(); //check for MIDI In
+  //checks if threads need to be run then run all 
+  if(tsThread.shouldRun()){
+      tsThread.run();
+  }
   // if sharing pins, you'll need to fix the directions of the touchscreen pins
   pinMode(XM, OUTPUT);
   pinMode(YP, OUTPUT);
@@ -295,4 +314,18 @@ void loop() {
       }
       tsThread.recently_drawn = true;
   }
+
+  //following function updates freedraw screen if a new key is detected 
+  if (tsThread.menu_mode == 3 && key_change == true){
+    if(algThread.shouldRun()){
+        algThread.run();
+        draw_time(total_duration);
+        key_change == false;
+    }
+  }
+  
 }
+
+
+
+
