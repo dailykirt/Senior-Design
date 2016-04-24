@@ -49,88 +49,6 @@ Adafruit_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET);
 #define MAXPRESSURE 1000
 //end touch screen delcarations ~~~~~~~~~~~~~~~~~~~~~~~
 
-//following functions are for the menu astetics ~~~~~~~~~~~~~~~~~~~~~
-//draws introduction screen 
-void draw_intro(){
-  tft.fillScreen(MAGENTA);
-  //These two buttons will be to ask user if they want to see the tutorial
-  tft.fillRect(0,140,160,100,GREEN); //yes
-  tft.fillRect(160,140,160,100,RED); //no
-  //this is the welcome text
-  tft.setTextColor(BLACK);
-  tft.setTextSize(6);
-  tft.setCursor(10,10);
-  tft.println("Welcome!");
-  tft.setTextSize(3);
-  tft.println("Would you like");
-  tft.println("to view ");
-  tft.println("the tutorial?");
-  tft.setTextSize(4);
-  tft.setCursor(50,180);
-  tft.print("Yes");
-  tft.setCursor(220,180);
-  tft.print("No");
-}
-
-//draws tutorial screen 
-void draw_tutorial(){
-  tft.fillScreen(CYAN);
-  //make main menu button 
-  tft.fillRect(0,140,320,100,GREEN); //yes
-  tft.setCursor(20,160);
-  tft.setTextSize(4);
-  tft.print("Main Menu");
-}
-
-//this function draws the main menu
-void draw_main_menu(){
-  tft.fillScreen(BLACK);
-  //begin by showing user a menu. Two buttons
-  tft.fillRect(0, 0, 320, 120, GREEN);
-  tft.fillRect(0, 120, 320, 120, BLUE);
-  
-  tft.setTextColor(BLACK);
-  tft.setTextSize(4);
-  tft.setCursor(50,50);
-  tft.print("Free Play");
-  tft.setCursor(5,150);
-  tft.print("Guidance Mode");
-}
-
-void draw_back_button(){
-  //this creates a back button to go to main menu
-  tft.fillRect(0, 0, 50, 20, RED);
-  tft.setCursor(3,3);
-  tft.setTextSize(2);
-  tft.print("Back");
-}
-
-void draw_free_play(){
-  tft.fillScreen(BLACK);
-  draw_back_button();
-  tft.setTextColor(WHITE);
-  tft.setCursor(20,60);
-  tft.setTextSize(3);
-  tft.println("Your Predicted");
-  tft.println("");
-  tft.println("Key:");
-  tft.println("");
-  tft.println("% Right:");
-}
-
-void draw_guidance_mode(){
-  tft.fillScreen(YELLOW);
-  draw_back_button();
-}
-
-void draw_time(unsigned long elapsed_time){
-    tft.setCursor(75,110);
-    tft.setTextColor(WHITE);
-    tft.setTextSize(3);
-    tft.fillRect(75, 110, 160, 30, BLACK);
-    tft.println(elapsed_time);
-}
-//end of menu astetics~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 //the following deals with the touch screen threads~~~~~~~~~~~~~~~~~~~~~~
 // Create a new Class, called touchThread, that inherits from Thread
@@ -190,7 +108,6 @@ public:
 
 //create a touchThread
 touchThread tsThread = touchThread();
-
 //end touch screen threads~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 //dealing with MIDI~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -201,46 +118,19 @@ public:
   int notePitch;
   unsigned int actual_time=0;
   float normalized_time=0.0;
-  //a timer for each octave 
-  //StopWatch SWarray[3];
   StopWatch sw;
   //if an incoming note matches the pitch start a timer start timer
   void setTimer(){
-    /*
-      for (int i=0;i<3;i++){
-        if (SWarray[i].isRunning() == false){
-          SWarray[i].start();
-          break;
-        }
-      } 
-      */
       sw.start();
   }
-
   void stopTimer(){
-    /*
-      for (int i=0;i<3;i++){
-        if (SWarray[i].isRunning() == true){
-          SWarray[i].stop();
-          break;
-        }
-        
-      //then update total note duration  
-     // actual_time = SWarray[0].elapsed() + SWarray[1].elapsed() + SWarray[2].elapsed();
-    }
-    */
      sw.stop();
      actual_time = sw.elapsed();
   }
 };
 
-
 MIDI_CREATE_DEFAULT_INSTANCE();
-unsigned long total_duration = 0; 
 midiNote midiDataArr[12];
-float major_chroma[12] = {(1/3),0.0,0.0,0.0,0.0,(1/3),0.0,0.0,(1/3),0.0,0.0,0.0};
-float minor_chroma[12] = {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
-float best_ecludian = 0;
 
 // When MIDI in is detected the following function will set a timer to find note duration
 void MyHandleNoteOn(byte channel, byte pitch, byte velocity) {
@@ -262,18 +152,179 @@ void MyHandleNoteOff(byte channel, byte pitch, byte velocity) {
 //Algorithim Thread~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Thread algThread = Thread(); //make new thread
 boolean key_change = true; //used to only draw when key changes
-
+//first 12 is major, last 12 is minor
+//float major_chroma[12] = {0.125,0.0,0.0,0.25,0.0,0.125,0.0,0.125,0.25,0.0,0.0,0.125};
+float major_chroma[12] = {1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
+float minor_chroma[12] = {0.0,0.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
+float min_ecludian = 9999.0;
+unsigned long total_duration = 0; //in ms 
+//the following selects which key is being predicted. will be form 0-23
+int predicted_key=0;
+float confidence = 0.0;
 void algorithim_callback(){
+  int index;
   //first update total duration 
   unsigned long duration_sum=0;
+  float current_euclidean = 0.0;
+  //sum up all durations and update total_duration 
   for (int i=0;i<12;i++){
     duration_sum = duration_sum + midiDataArr[i].actual_time;
   }
   total_duration = duration_sum;
-  key_change = true;
+  
+  //normalize data
+  for (int i=0; i<12;i++){
+     if(total_duration != 0){
+        midiDataArr[i].normalized_time = (float)midiDataArr[i].actual_time / (float)total_duration;
+     }
+  }
+  
+  //find ecludian distance max first for minor
+  for (int i=0;  i<12; i++){
+      for (int j=0;j<12;j++){
+         index = i + j;
+         if (index >= 12){
+          index = index - 12;
+         }
+         current_euclidean = current_euclidean + pow((midiDataArr[j].normalized_time - major_chroma[index]),2);
+      }
+      current_euclidean = sqrt(current_euclidean);
+      if(current_euclidean < min_ecludian){
+        min_ecludian = current_euclidean;
+        predicted_key = i;
+      }
+      current_euclidean = 0; //refresh current_euclidean
+  }
+
+    //then minor
+  for (int i=0;  i<12; i++){
+      for (int j=0;j<12;j++){
+         index = i + j;
+         if (index >= 12){
+          index = index - 12;
+         }
+         current_euclidean = current_euclidean + sqrt(pow((midiDataArr[j].normalized_time - minor_chroma[index]),2));
+      }
+      if(current_euclidean < min_ecludian){
+        min_ecludian = current_euclidean;
+        predicted_key = i + 12;
+      }
+      current_euclidean = 0; //refresh current_euclidean
+  }
+  
+  confidence = 1 - min_ecludian;
+  key_change = true; //if key changed set this true 
 }
 //end algorithim ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+//following functions are for the menu astetics ~~~~~~~~~~~~~~~~~~~~~
+//draws introduction screen 
+void draw_intro(){
+  tft.fillScreen(MAGENTA);
+  //These two buttons will be to ask user if they want to see the tutorial
+  tft.fillRect(0,140,160,100,GREEN); //yes
+  tft.fillRect(160,140,160,100,RED); //no
+  //this is the welcome text
+  tft.setTextColor(BLACK);
+  tft.setTextSize(6);
+  tft.setCursor(10,10);
+  tft.println("Welcome!");
+  tft.setTextSize(3);
+  tft.println("Would you like");
+  tft.println("to view ");
+  tft.println("the tutorial?");
+  tft.setTextSize(4);
+  tft.setCursor(50,180);
+  tft.print("Yes");
+  tft.setCursor(220,180);
+  tft.print("No");
+}
+
+//draws tutorial screen 
+void draw_tutorial(){
+  tft.fillScreen(CYAN);
+  //make main menu button 
+  tft.fillRect(0,140,320,100,GREEN); //yes
+  tft.setCursor(20,160);
+  tft.setTextSize(4);
+  tft.print("Main Menu");
+}
+
+//this function draws the main menu
+void draw_main_menu(){
+  tft.fillScreen(BLACK);
+  //begin by showing user a menu. Two buttons
+  tft.fillRect(0, 0, 320, 120, GREEN);
+  tft.fillRect(0, 120, 320, 120, BLUE);
+  
+  tft.setTextColor(BLACK);
+  tft.setTextSize(4);
+  tft.setCursor(50,50);
+  tft.print("Free Play");
+  tft.setCursor(5,150);
+  tft.print("Guidance Mode");
+}
+
+void draw_back_button(){
+  //this creates a back button to go to main menu
+  tft.fillRect(0, 0, 50, 20, RED);
+  tft.setCursor(3,3);
+  tft.setTextSize(2);
+  tft.print("Back");
+  //clear old data 
+  for(int i=0;i<12;i++){
+    midiDataArr[i].actual_time = 0;
+    midiDataArr[i].normalized_time = 0;
+  }
+  min_ecludian = 9999.0;
+  total_duration = 0; 
+  predicted_key= 0;
+  confidence = 0.0;
+}
+
+void draw_free_play(){
+  tft.fillScreen(BLACK);
+  draw_back_button();
+  tft.setTextColor(WHITE);
+  tft.setCursor(20,60);
+  tft.setTextSize(3);
+  tft.println("Your Predicted");
+  tft.println("");
+  tft.println("Key:");
+  tft.println("");
+  tft.println("Correct:");
+}
+
+void draw_guidance_mode(){
+  tft.fillScreen(YELLOW);
+  draw_back_button();
+}
+
+//remember to change type to unsigned long for time.
+void draw_predictedKey(int keyVal){
+    tft.setCursor(75,110);
+    tft.setTextColor(WHITE);
+    tft.setTextSize(3);
+    tft.fillRect(75, 110, 80, 30, BLACK);
+    if(total_duration == 0){
+      tft.print(" ?");
+    }else{
+      tft.println(keyVal);
+    }
+}
+
+void draw_confidence(float confidence){
+    tft.setCursor(145,160);
+    tft.setTextColor(WHITE);
+    tft.setTextSize(3);
+    tft.fillRect(140, 160, 80, 30, BLACK);
+    if(total_duration == 0){
+      tft.print(" ?");
+    }else{
+      tft.print(confidence);
+    }
+}
+//end of menu astetics~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void setup() {
   tft.reset();
   uint16_t identifier = 0x9341;
@@ -285,7 +336,7 @@ void setup() {
   // Configures thread intervals
   tsThread.setInterval(200);
   algThread.onRun(algorithim_callback);
-  algThread.setInterval(1500);
+  algThread.setInterval(4000);
   //configure function incoming MIDI calls 
   MIDI.begin(MIDI_CHANNEL_OMNI); // Initialize the Midi Library all channels 
   Serial.begin(115200); //inizlize midi over serial 
@@ -327,11 +378,13 @@ void loop() {
   if (tsThread.menu_mode == 3 && key_change == true){
     if(algThread.shouldRun()){
         algThread.run();
-        draw_time(total_duration);
+        draw_predictedKey(predicted_key);
+        draw_confidence(confidence);
+        //draw_confidence(min_ecludian);
         key_change == false;
+        min_ecludian = 9999.0; //refresh 
     }
   }
-  
 }
 
 
