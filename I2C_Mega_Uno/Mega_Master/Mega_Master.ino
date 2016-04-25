@@ -2565,5 +2565,3 @@ void setColor(int note, int color) {
       break;
   }
 }
-
-
