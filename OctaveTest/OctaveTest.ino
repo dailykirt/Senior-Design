@@ -3,6 +3,7 @@
 #include "Adafruit_MCP23017.h"
 
 // MIDI note values
+<<<<<<< HEAD
 #define NOTE_C2     36
 #define NOTE_CS2    37
 #define NOTE_D2     38
@@ -61,6 +62,66 @@
 #define MAGENTA     5
 #define CYAN        6
 #define WHITE       7
+=======
+#define NOTE_C2   36
+#define NOTE_CS2  37
+#define NOTE_D2   38
+#define NOTE_DS2  39
+#define NOTE_E2   40
+#define NOTE_F2   41
+#define NOTE_FS2  42
+#define NOTE_G2   43
+#define NOTE_GS2  44
+#define NOTE_A2   45
+#define NOTE_AS2  46
+#define NOTE_B2   47
+#define NOTE_C3   48
+#define NOTE_CS3  49
+#define NOTE_D3   50
+#define NOTE_DS3  51
+#define NOTE_E3   52
+#define NOTE_F3   53
+#define NOTE_FS3  54
+#define NOTE_G3   55
+#define NOTE_GS3  56
+#define NOTE_A3   57
+#define NOTE_AS3  58
+#define NOTE_B3   59
+#define NOTE_C4   60
+#define NOTE_CS4  61
+#define NOTE_D4   62
+#define NOTE_DS4  63
+#define NOTE_E4   64
+#define NOTE_F4   65
+#define NOTE_FS4  66
+#define NOTE_G4   67
+#define NOTE_GS4  68
+#define NOTE_A4   69
+#define NOTE_AS4  70
+#define NOTE_B4   71
+#define NOTE_C5   72
+#define NOTE_CS5  73
+#define NOTE_D5   74
+#define NOTE_DS5  75
+#define NOTE_E5   76
+#define NOTE_F5   77
+#define NOTE_FS5  78
+#define NOTE_G5   79
+#define NOTE_GS5  80
+#define NOTE_A5   81
+#define NOTE_AS5  82
+#define NOTE_B5   83
+
+// Colors
+#define BLACK     0
+#define RED       1
+#define GREEN     2
+#define BLUE      3
+#define YELLOW    4
+#define MAGENTA   5
+#define CYAN      6
+#define WHITE     7
+>>>>>>> origin/master
 
 // Musical keys
 #define CMAJOR      0

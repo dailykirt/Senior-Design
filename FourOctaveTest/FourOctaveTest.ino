@@ -88,6 +88,13 @@
 #define BFMINOR     22
 #define BMINOR      23
 
+<<<<<<< HEAD
+=======
+// Serial function types
+#define KEYCHANGE   0
+#define MENUSELECT  1
+
+>>>>>>> origin/master
 // MCP23017 port expanders
 Adafruit_MCP23017 MCP0;
 Adafruit_MCP23017 MCP1;
@@ -104,6 +111,7 @@ const int S1 = 6;
 const int S0 = 5;
 const int MUXENABLE = 7;
 
+<<<<<<< HEAD
 const int I2CRESET = 12;
 
 const int LED = 13;
@@ -118,6 +126,18 @@ int keyColors[48];
 void setup() {
   pinMode(LED, OUTPUT);
 
+=======
+bool noteOn[48];
+int keyColors[48];
+
+bool serialAvailable;
+byte serialFunction;
+byte serialData;
+
+int key;
+
+void setup() {
+>>>>>>> origin/master
   MCP0.begin(0);
   MCP1.begin(1);
   MCP2.begin(2);
@@ -127,9 +147,12 @@ void setup() {
   MCP6.begin(6);
   MCP7.begin(7);
 
+<<<<<<< HEAD
   digitalWrite(LED, HIGH);
   delay(1000);
 
+=======
+>>>>>>> origin/master
   for (int i = 0; i < 16; i++) {
     MCP0.pinMode(i, OUTPUT);
     delay(10);
@@ -149,15 +172,19 @@ void setup() {
     delay(10);
   }
 
+<<<<<<< HEAD
   digitalWrite(LED, LOW);
   delay(1000);
 
+=======
+>>>>>>> origin/master
   for (int i = 0; i < 48; i++) {
     noteOn[i] = false;
     keyColors[i] = BLACK;
   }
 
   pinMode(S1, OUTPUT);
+<<<<<<< HEAD
   digitalWrite(S1, LOW);
   pinMode(S0, OUTPUT);
   digitalWrite(S0, LOW);
@@ -216,6 +243,27 @@ void loop() {
 //  }
 //}
 
+=======
+  pinMode(S0, OUTPUT);
+  pinMode(MUXENABLE, OUTPUT);
+  digitalWrite(MUXENABLE, LOW);
+
+  Serial3.begin(115200);
+  serialAvailable = false;
+
+  Wire.begin();
+}
+
+void loop() {
+  if (serialAvailable == true) {
+    serialAvailable = false;
+    processSerialData();
+  }
+
+  sampleFSRs();
+}
+
+>>>>>>> origin/master
 // Sets a corresponding RGB LED to the specified color
 void setColor(int note, int color) {
   switch (note) {
@@ -2541,7 +2589,20 @@ void sampleFSRs() {
     // If the note breaks the threshold
     if (intensity > THRESHOLD) {
       noteOn[i] = true;
+<<<<<<< HEAD
       setColor(36 + i, WHITE);
+=======
+
+      if (intensity < 450) {
+        setColor(36 + i, RED);
+      }
+      else if (intensity < 600) {
+        setColor(36 + i, GREEN);
+      }
+      else {
+        setColor(36 + i, BLUE);
+      }
+>>>>>>> origin/master
     }
     // If the note was originally on
     else if (noteOn[i] == true) {
@@ -2559,7 +2620,20 @@ void sampleFSRs() {
     // If the note breaks the threshold
     if (intensity > THRESHOLD) {
       noteOn[12 + i] = true;
+<<<<<<< HEAD
       setColor(48 + i, WHITE);
+=======
+
+      if (intensity < 450) {
+        setColor(48 + i, RED);
+      }
+      else if (intensity < 600) {
+        setColor(48 + i, GREEN);
+      }
+      else {
+        setColor(48 + i, BLUE);
+      }
+>>>>>>> origin/master
     }
     // If the note was originally on
     else if (noteOn[12 + i] == true) {
@@ -2577,7 +2651,20 @@ void sampleFSRs() {
     // If the note breaks the threshold
     if (intensity > THRESHOLD) {
       noteOn[36 + i] = true;
+<<<<<<< HEAD
       setColor(72 + i, WHITE);
+=======
+
+      if (intensity < 450) {
+        setColor(72 + i, RED);
+      }
+      else if (intensity < 600) {
+        setColor(72 + i, GREEN);
+      }
+      else {
+        setColor(72 + i, BLUE);
+      }
+>>>>>>> origin/master
     }
     // If the note was originally on
     else if (noteOn[36 + i] == true) {
@@ -2595,7 +2682,20 @@ void sampleFSRs() {
     // If the note breaks the threshold
     if (intensity > THRESHOLD) {
       noteOn[24 + i] = true;
+<<<<<<< HEAD
       setColor(60 + i, WHITE);
+=======
+
+      if (intensity < 450) {
+        setColor(60 + i, RED);
+      }
+      else if (intensity < 600) {
+        setColor(60 + i, GREEN);
+      }
+      else {
+        setColor(60 + i, BLUE);
+      }
+>>>>>>> origin/master
     }
     // If the note was originally on
     else if (noteOn[24 + i] == true) {
@@ -2605,6 +2705,7 @@ void sampleFSRs() {
   }
 }
 
+<<<<<<< HEAD
 //#include <EventManager.h>
 //#include <Wire.h>
 //#include "Adafruit_MCP23017.h"
@@ -5426,3 +5527,29 @@ void sampleFSRs() {
 //  else if (serialFunction == MENUSELECT) {
 //  }
 //}
+=======
+// Detect a serial event
+void serialEvent3() {
+  serialAvailable = true;
+
+  while (Serial3.available() > 0) {
+    serialFunction = Serial3.read();
+    serialData = Serial3.read();
+  }
+}
+
+// Process the data received from the serial port
+void processSerialData() {
+  switch (serialFunction) {
+    case KEYCHANGE:
+      // If it is a major key
+      if (serialData < 12) {
+        
+      break;
+    case MENUSELECT:
+      break;
+    default:
+      break;
+  }
+}
+>>>>>>> origin/master
