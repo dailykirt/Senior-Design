@@ -471,10 +471,10 @@ void handleNoteOff(byte channel, byte pitch, byte velocity) {
 
 // When receiving serial data
 void serialEvent3() {
-  //if(Serial3.available() == 1){
+  if(Serial3.available() == 1){
       key = Serial3.read();
       setKey(key);
-  //}
+  }
 }
 
 // Sets a corresponding RGB LED to the specified color

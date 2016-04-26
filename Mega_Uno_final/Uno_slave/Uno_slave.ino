@@ -385,7 +385,7 @@ void loop() {
         Serial.write(predicted_key);
         /*
         if(key_change == true){
-            Serial.write((byte) predicted_key);
+            Serial.write(predicted_key);
             key_change == false;
         }*/
         key_change == false;
