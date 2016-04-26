@@ -130,12 +130,13 @@ void serialEvent() {
 //Algorithim Thread~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Thread algThread = Thread(); //make new thread
 boolean key_change = true; //used to only draw when key changes
-float major_chroma[12] = {1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
-float minor_chroma[12] = {0.0,0.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
+float major_chroma[12] = {0.25, 0.0, 0.1, 0.0, 0.1, 0.15, 0.0, 0.15, 0.0, 0.1, 0.0, 0.15};
+float minor_chroma[12] = {0.25, 0.0, 0.1, 0.1, 0.0, 0.15, 0.0, 0.15, 0.1, 0.0, 0.1, 0.0};
 float min_ecludian = 9999.0;
 unsigned long total_duration = 0; //in ms 
 //the following selects which key is being predicted. will be form 0-23
 int predicted_key=0;
+int old_predicted_key=0;
 float confidence = 0.0;
 
 
@@ -169,6 +170,7 @@ void algorithim_callback(){
       current_euclidean = sqrt(current_euclidean);
       if(current_euclidean < min_ecludian){
         min_ecludian = current_euclidean;
+        old_predicted_key = predicted_key; //to see if key changes 
         predicted_key = i;
       }
       current_euclidean = 0.0; //refresh current_euclidean
@@ -185,13 +187,17 @@ void algorithim_callback(){
       }
       if(current_euclidean < min_ecludian){
         min_ecludian = current_euclidean;
+        old_predicted_key = predicted_key; 
         predicted_key = i + 12;
       }
       current_euclidean = 0; //refresh current_euclidean
   }
   
+  
   confidence = 1.0 - min_ecludian;
-  key_change = true; //if key changed set this true 
+  if(old_predicted_key != predicted_key){
+      key_change = true; //if key changed set this true 
+  }
 }
 //end algorithim ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -200,17 +206,17 @@ void algorithim_callback(){
 void draw_intro(){
   tft.fillScreen(MAGENTA);
   //These two buttons will be to ask user if they want to see the tutorial
-  tft.fillRect(0,140,160,100,GREEN); //yes
-  tft.fillRect(160,140,160,100,RED); //no
+  tft.fillRect(0,150,170,100,GREEN); //yes
+  tft.fillRect(160,150,170,100,RED); //no
   //this is the welcome text
   tft.setTextColor(BLACK);
   tft.setTextSize(6);
-  tft.setCursor(10,10);
+  tft.setCursor(15,10);
   tft.println("Welcome!");
   tft.setTextSize(3);
-  tft.println("Would you like");
-  tft.println("to view ");
-  tft.println("the tutorial?");
+  tft.println("  Would you like");
+  tft.println("  to view ");
+  tft.println("  the tutorial?");
   tft.setTextSize(4);
   tft.setCursor(50,180);
   tft.print("Yes");
@@ -221,9 +227,13 @@ void draw_intro(){
 //draws tutorial screen 
 void draw_tutorial(){
   tft.fillScreen(CYAN);
+  tft.setCursor(10,10);
+  tft.setTextColor(BLACK);
+  tft.setTextSize(2);
+  tft.print("Button Mode lets you play notes using the onboard  keys. Serial MIDI mode     will read inputs from a   Digital Audio Workstation on a computer.");
   //make main menu button 
-  tft.fillRect(0,140,320,100,GREEN); //yes
-  tft.setCursor(20,160);
+  tft.fillRect(0,160,320,100,GREEN); //yes
+  tft.setCursor(40,180);
   tft.setTextSize(4);
   tft.print("Main Menu");
 }
@@ -237,10 +247,10 @@ void draw_main_menu(){
   
   tft.setTextColor(BLACK);
   tft.setTextSize(4);
-  tft.setCursor(50,50);
-  tft.print("Free Play");
+  tft.setCursor(40,50);
+  tft.print("Button Mode");
   tft.setCursor(5,150);
-  tft.print("Guidance Mode");
+  tft.print(" Serial MIDI      Mode");
 }
 
 void draw_back_button(){
@@ -283,11 +293,33 @@ void draw_predictedKey(int keyVal){
     tft.setCursor(75,110);
     tft.setTextColor(WHITE);
     tft.setTextSize(3);
-    tft.fillRect(75, 110, 80, 30, BLACK);
+    tft.fillRect(75, 110, 100, 30, BLACK);
     if(total_duration == 0){
       tft.print(" ?");
-    }else{
-      tft.println(keyVal);
+    }else if(keyVal == 0){
+      tft.println("C Major");
+    }else if(keyVal ==1){
+      tft.println("B Major");
+    }else if(keyVal == 2){
+      tft.println("Bb Major");
+    }else if(keyVal == 3){
+      tft.println("A Major"); 
+    }else if(keyVal == 4){
+      tft.println("Ab Major");
+    }else if(keyVal == 5){
+      tft.println("G");
+    }else if(keyVal == 6){
+      tft.println("Gb Major");
+    }else if(keyVal == 7){
+      tft.println("F Major");
+    }else if(keyVal == 8){
+      tft.println("E Major");
+    }else if(keyVal ==9){
+      tft.println("Eb Major");
+    }else if(keyVal == 10){
+      tft.println("D Major");
+    }else if(keyVal == 11){
+      tft.println("Db Major");
     }
 }
 
@@ -338,19 +370,24 @@ void loop() {
           draw_free_play();
           draw_back_button();
       }else if (tsThread.menu_mode == 4){
-          draw_guidance_mode();
+          draw_free_play();
           draw_back_button();
       }
       tsThread.recently_drawn = true;
   }
 
   //following function updates freedraw screen if a new key is detected 
-  if (tsThread.menu_mode == 3 && key_change == true){
+  if (tsThread.menu_mode == 3){
     if(algThread.shouldRun()){
         algThread.run();
         draw_predictedKey(predicted_key);
-        //draw_confidence(testVar);
         draw_confidence(confidence);
+        Serial.write(predicted_key);
+        /*
+        if(key_change == true){
+            Serial.write((byte) predicted_key);
+            key_change == false;
+        }*/
         key_change == false;
         min_ecludian = 9999.0; //refresh 
     }

@@ -1,66 +1,69 @@
-#include <EventManager.h>
+#include <MIDI.h>
+#include <StopWatch.h>
 #include <Wire.h>
 #include "Adafruit_MCP23017.h"
 
+MIDI_CREATE_DEFAULT_INSTANCE();
+
 // MIDI note values
-#define NOTE_C2   36
-#define NOTE_CS2  37
-#define NOTE_D2   38
-#define NOTE_DS2  39
-#define NOTE_E2   40
-#define NOTE_F2   41
-#define NOTE_FS2  42
-#define NOTE_G2   43
-#define NOTE_GS2  44
-#define NOTE_A2   45
-#define NOTE_AS2  46
-#define NOTE_B2   47
-#define NOTE_C3   48
-#define NOTE_CS3  49
-#define NOTE_D3   50
-#define NOTE_DS3  51
-#define NOTE_E3   52
-#define NOTE_F3   53
-#define NOTE_FS3  54
-#define NOTE_G3   55
-#define NOTE_GS3  56
-#define NOTE_A3   57
-#define NOTE_AS3  58
-#define NOTE_B3   59
-#define NOTE_C4   60
-#define NOTE_CS4  61
-#define NOTE_D4   62
-#define NOTE_DS4  63
-#define NOTE_E4   64
-#define NOTE_F4   65
-#define NOTE_FS4  66
-#define NOTE_G4   67
-#define NOTE_GS4  68
-#define NOTE_A4   69
-#define NOTE_AS4  70
-#define NOTE_B4   71
-#define NOTE_C5   72
-#define NOTE_CS5  73
-#define NOTE_D5   74
-#define NOTE_DS5  75
-#define NOTE_E5   76
-#define NOTE_F5   77
-#define NOTE_FS5  78
-#define NOTE_G5   79
-#define NOTE_GS5  80
-#define NOTE_A5   81
-#define NOTE_AS5  82
-#define NOTE_B5   83
+#define NOTE_C2     36
+#define NOTE_CS2    37
+#define NOTE_D2     38
+#define NOTE_DS2    39
+#define NOTE_E2     40
+#define NOTE_F2     41
+#define NOTE_FS2    42
+#define NOTE_G2     43
+#define NOTE_GS2    44
+#define NOTE_A2     45
+#define NOTE_AS2    46
+#define NOTE_B2     47
+#define NOTE_C3     48
+#define NOTE_CS3    49
+#define NOTE_D3     50
+#define NOTE_DS3    51
+#define NOTE_E3     52
+#define NOTE_F3     53
+#define NOTE_FS3    54
+#define NOTE_G3     55
+#define NOTE_GS3    56
+#define NOTE_A3     57
+#define NOTE_AS3    58
+#define NOTE_B3     59
+#define NOTE_C4     60
+#define NOTE_CS4    61
+#define NOTE_D4     62
+#define NOTE_DS4    63
+#define NOTE_E4     64
+#define NOTE_F4     65
+#define NOTE_FS4    66
+#define NOTE_G4     67
+#define NOTE_GS4    68
+#define NOTE_A4     69
+#define NOTE_AS4    70
+#define NOTE_B4     71
+#define NOTE_C5     72
+#define NOTE_CS5    73
+#define NOTE_D5     74
+#define NOTE_DS5    75
+#define NOTE_E5     76
+#define NOTE_F5     77
+#define NOTE_FS5    78
+#define NOTE_G5     79
+#define NOTE_GS5    80
+#define NOTE_A5     81
+#define NOTE_AS5    82
+#define NOTE_B5     83
 
 // Colors
-#define BLACK     0
-#define RED       1
-#define GREEN     2
-#define BLUE      3
-#define YELLOW    4
-#define MAGENTA   5
-#define CYAN      6
-#define WHITE     7
+#define BLACK       0
+#define RED         1
+#define GREEN       2
+#define BLUE        3
+#define YELLOW      4
+#define MAGENTA     5
+#define CYAN        6
+#define WHITE       7
 
 // Musical keys
 #define CMAJOR      0
@@ -88,6 +91,9 @@
 #define BFMINOR     22
 #define BMINOR      23
 
+// MIDI channel
+#define CHANNEL     1
+
 // MCP23017 port expanders
 Adafruit_MCP23017 MCP0;
 Adafruit_MCP23017 MCP1;
@@ -98,24 +104,75 @@ Adafruit_MCP23017 MCP5;
 Adafruit_MCP23017 MCP6;
 Adafruit_MCP23017 MCP7;
 
-const int THRESHOLD = 300;
+const int ONTHRESHOLD = 300;
+const int OFFTHRESHOLD = 200;
 
 const int S1 = 6;
 const int S0 = 5;
 
+const int EXPANDERSWITCH = 11;
 const int I2CRESET = 12;
 
 const int LED = 13;
 
+int key;
 bool noteOn[48];
 int keyColors[48];
+unsigned long duration[48];
 
+//class midiNote {
+//public:
+//  // A note pitch between 0 and 11
+//  int notePitch;
+//  unsigned long actual_time = 0;
+//  StopWatch sw;
+//
+//  void setTimer() {
+//    sw.start();
+//  }
+//
+//  void stopTimer() {
+//    sw.stop();
+//    actual_time = sw.elapsed();
+//  }
+//};
+//
+//midiNote midiDataArr[12];
+//
+//// This function will start a timer to find note duration when MIDI input is detected
+//void MyHandleNoteOn(byte channel, byte pitch, byte velocity) {
+//  if (velocity != 0){
+//    int noteFound = pitch % 12;
+//    midiDataArr[noteFound].setTimer();
+//    setColor(pitch, WHITE);
+//    digitalWrite(LED, HIGH);
+//  }
+//}
+//
+//// This function will stop the the timer when the velocity is zero
+//void MyHandleNoteOff(byte channel, byte pitch, byte velocity) {
+//  if (velocity == 0) {
+//    int noteFound = pitch % 12;
+//    midiDataArr[noteFound].stopTimer();
+//    setColor(pitch, BLACK);
+//    digitalWrite(LED, LOW);
+//
+//    // Send the duration via serial
+//    byte note = (byte) noteFound;
+//    byte LSB = (byte) (midiDataArr[noteFound].actual_time & 0xFF);
+//    byte MSB = (byte) ((midiDataArr[noteFound].actual_time >> 8) & 0xFF);
+//    Serial3.write(note);
+//    Serial3.write(LSB);
+//    Serial3.write(MSB);
+//  }
+//}
 
 void setup() {
-  //for debugging 
-  Serial.begin(9600);
+  Serial3.begin(115200);
   pinMode(LED, OUTPUT);
-  //initlize port expanders (I2C)
+  pinMode(EXPANDERSWITCH, OUTPUT);
+
+  // Initialize port expanders
   MCP0.begin(0);
   MCP1.begin(1);
   MCP2.begin(2);
@@ -127,8 +184,8 @@ void setup() {
 
   digitalWrite(LED, HIGH);
   delay(1000);
-  
-  //set all port I/O pins to output 
+
+  // Set all port expander I/O pins to output
   for (int i = 0; i < 16; i++) {
     MCP0.pinMode(i, OUTPUT);
     delay(10);
@@ -144,17 +201,27 @@ void setup() {
     delay(10);
     MCP6.pinMode(i, OUTPUT);
     delay(10);
+    digitalWrite(EXPANDERSWITCH, LOW);
+    MCP7.pinMode(i, OUTPUT);
+    delay(10);
+    digitalWrite(EXPANDERSWITCH, HIGH);
     MCP7.pinMode(i, OUTPUT);
     delay(10);
   }
 
   digitalWrite(LED, LOW);
   delay(1000);
- //initlize note array so all leds are off 
+
   for (int i = 0; i < 48; i++) {
     noteOn[i] = false;
     keyColors[i] = BLACK;
+    duration[i] = 0;
   }
+
+  MIDI.begin(CHANNEL);
+  Serial.begin(115200);
+  MIDI.setHandleNoteOn(handleNoteOn);
+  MIDI.setHandleNoteOff(handleNoteOff);
 
   pinMode(S1, OUTPUT);
   digitalWrite(S1, LOW);
@@ -170,87 +237,192 @@ void setup() {
   delay(1000);
 
   digitalWrite(LED, HIGH);
+  delay(1000);
+
+  digitalWrite(LED, LOW);
+//  Serial.println("PRINT THIS!");
 }
-
-//The following is to get note durations 
-class noteDuration{
-public:
-  unsigned long note_duration = 0;
-  
-  void start_time(){
-    note_duration = millis();
-  }
-
-  void end_time(){
-    note_duration = (millis() - note_duration);
-    //send over I2C and typecast as unsigned int 
-    Serial.println(note_duration);
-    note_duration = 0; //reset value 
-  }
-};
-//create an array of noteDurations for each note
-noteDuration noteDurationArr[48]; 
-
 
 void loop() {
   sampleFSRs();
+  //MIDI.read();
 }
 
 void sampleFSRs() {
   int intensity;
-  int setColorIndex = 36;
-  int noteOnIndex = 0;
-  
-  for (int i=0;i<4;i++){
-    if(i==0){
-      //sample first octave
-        digitalWrite(S1, LOW);
-        digitalWrite(S0, LOW);
-    }else if(i==1){
-      //sample second octave 
-        digitalWrite(S0, HIGH);
-    }else if(i==2){
-         // Sample the third octave
-        digitalWrite(S0, LOW);
-        digitalWrite(S1,HIGH);      
-    }else if(i==3){
-         // Sample the fourth octave
-         digitalWrite(S1, HIGH);
-    }    
-    //now sample each note in the octave 
-      for (int j = 0; j < 12; j++) {
-          intensity = analogRead(j);
 
-          // If the note breaks the threshold
-          if (intensity > THRESHOLD) {
-            //get note start time
-              if(noteOn[j+noteOnIndex] == false){
-                noteDurationArr[j+noteOnIndex].start_time();
-                noteOn[j + noteOnIndex] = true;
-              }
-              if (intensity < 450) {                setColor(setColorIndex + j, RED);
-              }
-              else if (intensity < 600) {
-                setColor(setColorIndex + j, GREEN);
-              }
-              else {
-                setColor(setColorIndex + j, BLUE);
-             }
+  // Sample the first octave
+  digitalWrite(S1, LOW);
+  digitalWrite(S0, LOW);
+
+  for (int i = 0; i < 12; i++) {
+    intensity = analogRead(i);
+    int note = 36 + i;
+//   Serial.println(note);
+
+    // If the note breaks the threshold
+    if (intensity > ONTHRESHOLD) {
+      if (noteOn[i] == false) {
+        MIDI.sendNoteOn((byte) note,(byte) 127, CHANNEL);
+        digitalWrite(LED, HIGH);
+        noteOn[i] = true;
+        duration[i] = millis();
       }
+
+      setColor(36 + i, WHITE);
+    }
     // If the note was originally on
-    else if (noteOn[(j+noteOnIndex)] == true) {
-      noteDurationArr[j+noteOnIndex].end_time();
-      noteOn[(j+noteOnIndex)] = false;
-      setColor((setColorIndex + j), keyColors[(j+noteOnIndex)]);
+    else if ((noteOn[i] == true) && (intensity < OFFTHRESHOLD)) {
+      MIDI.sendNoteOff((byte) note, 0, CHANNEL);
+      digitalWrite(LED, LOW);
+      duration[i] = millis() - duration[i];
+      byte note = (byte) i;
+      byte LSB = (byte) (duration[i] & 0xFF);
+      byte MSB = (byte) ((duration[i] >> 8) & 0xFF);
+      Serial3.write(note);
+      Serial3.write(LSB);
+      Serial3.write(MSB);
+      noteOn[i] = false;
+      setColor(36 + i, keyColors[i]);
     }
   }
-    //incriment setColor and note on index for next octave
-    setColorIndex = setColorIndex + 12;
-    noteOnIndex = noteOnIndex + 12;
+
+  
+  // Sample the second octave
+  digitalWrite(S0, HIGH);
+
+  for (int i = 0; i < 12; i++) {
+    intensity = analogRead(i);
+    int note = 48 + i;
+
+    // If the note breaks the threshold
+    if (intensity > ONTHRESHOLD) {
+      if (noteOn[12 + i] == false) {
+        MIDI.sendNoteOn(note, 127, CHANNEL);
+        digitalWrite(LED, HIGH);
+        noteOn[12 + i] = true;
+        duration[12 + i] = millis();
+      }
+
+      setColor(48 + i, WHITE);
+    }
+    // If the note was originally on
+    else if ((noteOn[12 + i] == true) && (intensity < OFFTHRESHOLD)) {
+      MIDI.sendNoteOff(note, 0, CHANNEL);
+      digitalWrite(LED, LOW);
+      duration[12 + i] = millis() - duration[12 + i];
+      byte note = (byte) i;
+      byte LSB = (byte) (duration[12+ i] & 0xFF);
+      byte MSB = (byte) ((duration[12 + i] >> 8) & 0xFF);
+      Serial3.write(note);
+      Serial3.write(LSB);
+      Serial3.write(MSB);
+      noteOn[12 + i] = false;
+      setColor(48 + i, keyColors[12 + i]);
+    }
+  }
+
+  // Sample the fourth octave
+  digitalWrite(S1, HIGH);
+
+  for (int i = 0; i < 12; i++) {
+    intensity = analogRead(i);
+    int note = 72 + i;
+//    Serial.println(note);
+
+    // If the note breaks the threshold
+    if (intensity > ONTHRESHOLD) {
+      if (noteOn[36 + i] == false) {
+        MIDI.sendNoteOn(note, 127, CHANNEL);
+        digitalWrite(LED, HIGH);
+        noteOn[36 + i] = true;
+        duration[36 + i] = millis();
+      }
+
+      setColor(72 + i, WHITE);
+    }
+    // If the note was originally on
+    else if ((noteOn[36 + i] == true) && (intensity < OFFTHRESHOLD)) {
+      MIDI.sendNoteOff(note, 0, CHANNEL);
+      digitalWrite(LED, LOW);
+      duration[36 + i] = millis() - duration[36 + i];
+      byte note = (byte) i;
+      byte LSB = (byte) (duration[36 + i] & 0xFF);
+      byte MSB = (byte) ((duration[36 + i] >> 8) & 0xFF);
+      Serial3.write(note);
+      Serial3.write(LSB);
+      Serial3.write(MSB);
+      noteOn[36 + i] = false;
+      setColor(72 + i, keyColors[36 + i]);
+    }
+  }
+
+  // Sample the third octave
+  digitalWrite(S0, LOW);
+
+  for (int i = 0; i < 12; i++) {
+    intensity = analogRead(i);
+    int note = 60 + i;
+//    Serial.println(note);
+
+    // If the note breaks the threshold
+    if (intensity > ONTHRESHOLD) {
+      if (noteOn[24 + i] == false) {
+        MIDI.sendNoteOn(note, 60, CHANNEL);
+        digitalWrite(LED, HIGH);
+        noteOn[24 + i] = true;
+        duration[24 + i] = millis();
+      }
+
+      setColor(60 + i, WHITE);
+    }
+    // If the note was originally on
+    else if ((noteOn[24 + i] == true) && (intensity < OFFTHRESHOLD)) {
+      MIDI.sendNoteOff(note, 0, CHANNEL);
+      digitalWrite(LED, LOW);
+      duration[24 + i] = millis() - duration[24 + i];
+      byte note = (byte) i;
+      byte LSB = (byte) (duration[24 + i] & 0xFF);
+      byte MSB = (byte) ((duration[24 + i] >> 8) & 0xFF);
+      Serial3.write(note);
+      Serial3.write(LSB);
+      Serial3.write(MSB);
+      noteOn[24 + i] = false;
+      setColor(60 + i, keyColors[24 + i]);
+    }
+  }
+  
+}
+
+// Handle a MIDI note on input
+void handleNoteOn(byte channel, byte pitch, byte velocity) {
+  if ((pitch >= 36) && (pitch < 84)) {
+    duration[pitch - 36] = millis();
+    setColor(pitch, WHITE);
   }
 }
 
+// Handle a MIDI note off input
+void handleNoteOff(byte channel, byte pitch, byte velocity) {
+  if ((pitch >= 36) && (pitch < 84)) {
+    duration[pitch - 36] = millis() - duration[pitch - 36];
+    setColor(pitch, BLACK);
 
+    // Send the duration via serial
+    byte note = (byte) ((pitch - 36) % 12);
+    byte LSB = (byte) (duration[pitch - 36] & 0xFF);
+    byte MSB = (byte) ((duration[pitch - 36] >> 8) & 0xFF);
+    Serial3.write(note);
+    Serial3.write(LSB);
+    Serial3.write(MSB);
+  }
+}
+
+// When receiving serial data
+void serialEvent3() {
+  key = Serial3.read();
+//  Serial.println(key);
+}
 
 // Sets a corresponding RGB LED to the specified color
 void setColor(int note, int color) {
@@ -2036,41 +2208,49 @@ void setColor(int note, int color) {
       switch (color) {
         case BLACK:
           MCP3.digitalWrite(7, LOW);
+          digitalWrite(EXPANDERSWITCH, LOW);
           MCP7.digitalWrite(8, LOW);
           MCP7.digitalWrite(9, LOW);
           break;
         case RED:
           MCP3.digitalWrite(7, HIGH);
+          digitalWrite(EXPANDERSWITCH, LOW);
           MCP7.digitalWrite(8, LOW);
           MCP7.digitalWrite(9, LOW);
           break;
         case GREEN:
           MCP3.digitalWrite(7, LOW);
+          digitalWrite(EXPANDERSWITCH, LOW);
           MCP7.digitalWrite(8, HIGH);
           MCP7.digitalWrite(9, LOW);
           break;
         case BLUE:
           MCP3.digitalWrite(7, LOW);
+          digitalWrite(EXPANDERSWITCH, LOW);
           MCP7.digitalWrite(8, LOW);
           MCP7.digitalWrite(9, HIGH);
           break;
         case YELLOW:
           MCP3.digitalWrite(7, HIGH);
+          digitalWrite(EXPANDERSWITCH, LOW);
           MCP7.digitalWrite(8, HIGH);
           MCP7.digitalWrite(9, LOW);
           break;
         case MAGENTA:
           MCP3.digitalWrite(7, HIGH);
+          digitalWrite(EXPANDERSWITCH, LOW);
           MCP7.digitalWrite(8, LOW);
           MCP7.digitalWrite(9, HIGH);
           break;
         case CYAN:
           MCP3.digitalWrite(7, LOW);
+          digitalWrite(EXPANDERSWITCH, LOW);
           MCP7.digitalWrite(8, HIGH);
           MCP7.digitalWrite(9, HIGH);
           break;
         case WHITE:
           MCP3.digitalWrite(7, HIGH);
+          digitalWrite(EXPANDERSWITCH, LOW);
           MCP7.digitalWrite(8, HIGH);
           MCP7.digitalWrite(9, HIGH);
           break;
@@ -2081,6 +2261,8 @@ void setColor(int note, int color) {
       break;
     // D5
     case 74:
+      digitalWrite(EXPANDERSWITCH, LOW);
+
       switch (color) {
         case BLACK:
           MCP7.digitalWrite(10, LOW);
@@ -2129,6 +2311,8 @@ void setColor(int note, int color) {
       break;
     // D#5
     case 75:
+      digitalWrite(EXPANDERSWITCH, LOW);
+
       switch (color) {
         case BLACK:
           MCP7.digitalWrite(13, LOW);
@@ -2177,6 +2361,8 @@ void setColor(int note, int color) {
       break;
     // E5
     case 76:
+      digitalWrite(EXPANDERSWITCH, LOW);
+
       switch (color) {
         case BLACK:
           MCP7.digitalWrite(0, LOW);
@@ -2225,6 +2411,8 @@ void setColor(int note, int color) {
       break;
     // F5
     case 77:
+      digitalWrite(EXPANDERSWITCH, LOW);
+
       switch (color) {
         case BLACK:
           MCP7.digitalWrite(3, LOW);
@@ -2275,42 +2463,58 @@ void setColor(int note, int color) {
     case 78:
       switch (color) {
         case BLACK:
+          digitalWrite(EXPANDERSWITCH, LOW);
           MCP7.digitalWrite(6, LOW);
+          digitalWrite(EXPANDERSWITCH, HIGH);
           MCP7.digitalWrite(7, LOW);
           MCP7.digitalWrite(8, LOW);
           break;
         case RED:
+          digitalWrite(EXPANDERSWITCH, LOW);
           MCP7.digitalWrite(6, HIGH);
+          digitalWrite(EXPANDERSWITCH, HIGH);
           MCP7.digitalWrite(7, LOW);
           MCP7.digitalWrite(8, LOW);
           break;
         case GREEN:
+          digitalWrite(EXPANDERSWITCH, LOW);
           MCP7.digitalWrite(6, LOW);
+          digitalWrite(EXPANDERSWITCH, HIGH);
           MCP7.digitalWrite(7, HIGH);
           MCP7.digitalWrite(8, LOW);
           break;
         case BLUE:
+          digitalWrite(EXPANDERSWITCH, LOW);
           MCP7.digitalWrite(6, LOW);
+          digitalWrite(EXPANDERSWITCH, HIGH);
           MCP7.digitalWrite(7, LOW);
           MCP7.digitalWrite(8, HIGH);
           break;
         case YELLOW:
+          digitalWrite(EXPANDERSWITCH, LOW);
           MCP7.digitalWrite(6, HIGH);
+          digitalWrite(EXPANDERSWITCH, HIGH);
           MCP7.digitalWrite(7, HIGH);
           MCP7.digitalWrite(8, LOW);
           break;
         case MAGENTA:
+          digitalWrite(EXPANDERSWITCH, LOW);
           MCP7.digitalWrite(6, HIGH);
+          digitalWrite(EXPANDERSWITCH, HIGH);
           MCP7.digitalWrite(7, LOW);
           MCP7.digitalWrite(8, HIGH);
           break;
         case CYAN:
+          digitalWrite(EXPANDERSWITCH, LOW);
           MCP7.digitalWrite(6, LOW);
+          digitalWrite(EXPANDERSWITCH, HIGH);
           MCP7.digitalWrite(7, HIGH);
           MCP7.digitalWrite(8, HIGH);
           break;
         case WHITE:
+          digitalWrite(EXPANDERSWITCH, LOW);
           MCP7.digitalWrite(6, HIGH);
+          digitalWrite(EXPANDERSWITCH, HIGH);
           MCP7.digitalWrite(7, HIGH);
           MCP7.digitalWrite(8, HIGH);
           break;
@@ -2321,6 +2525,8 @@ void setColor(int note, int color) {
       break;
     // G5
     case 79:
+      digitalWrite(EXPANDERSWITCH, HIGH);
+
       switch (color) {
         case BLACK:
           MCP7.digitalWrite(9, LOW);
@@ -2369,6 +2575,8 @@ void setColor(int note, int color) {
       break;
     // G#5
     case 80:
+      digitalWrite(EXPANDERSWITCH, HIGH);
+
       switch (color) {
         case BLACK:
           MCP7.digitalWrite(12, LOW);
@@ -2417,6 +2625,8 @@ void setColor(int note, int color) {
       break;
     // A5
     case 81:
+      digitalWrite(EXPANDERSWITCH, HIGH);
+
       switch (color) {
         case BLACK:
           MCP7.digitalWrite(15, LOW);
@@ -2465,6 +2675,8 @@ void setColor(int note, int color) {
       break;
     // A#5
     case 82:
+      digitalWrite(EXPANDERSWITCH, HIGH);
+
       switch (color) {
         case BLACK:
           MCP7.digitalWrite(2, LOW);
@@ -2513,6 +2725,8 @@ void setColor(int note, int color) {
       break;
     // B5
     case 83:
+      digitalWrite(EXPANDERSWITCH, HIGH);
+
       switch (color) {
         case BLACK:
           MCP7.digitalWrite(5, LOW);
