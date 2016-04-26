@@ -193,7 +193,7 @@ void algorithim_callback(){
         min_ecludian = current_euclidean;
         predicted_key = i;
       }
-      current_euclidean = 0; //refresh current_euclidean
+      current_euclidean = 0.0; //refresh current_euclidean
   }
 
     //then minor

@@ -160,8 +160,6 @@ void setup() {
   digitalWrite(S1, LOW);
   pinMode(S0, OUTPUT);
   digitalWrite(S0, LOW);
- // pinMode(MUXENABLE, OUTPUT);
-  //digitalWrite(MUXENABLE, LOW);
 
   digitalWrite(LED, HIGH);
   delay(1000);
@@ -217,12 +215,11 @@ void sampleFSRs() {
         digitalWrite(S1,HIGH);      
     }else if(i==3){
          // Sample the fourth octave
-         digitalWrite(S1, HIGH);
+        digitalWrite(S0, HIGH);
     }    
     //now sample each note in the octave 
       for (int j = 0; j < 12; j++) {
           intensity = analogRead(j);
-
           // If the note breaks the threshold
           if (intensity > THRESHOLD) {
             //get note start time

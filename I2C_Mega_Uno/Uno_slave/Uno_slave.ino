@@ -5,7 +5,6 @@
 #include <Adafruit_GFX.h>    // Core graphics library
 #include <Adafruit_TFTLCD.h> // Hardware-specific library
 #include <TouchScreen.h>
-#include <MIDI.h>
 
 //touch screen declarations ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #if defined(__SAM3X8E__)
@@ -110,50 +109,27 @@ public:
 touchThread tsThread = touchThread();
 //end touch screen threads~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-//dealing with MIDI~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//creating note object that stores duration 
-class midiNote{
-public:
-//a notePitch from 1-12
-  int notePitch;
-  unsigned int actual_time=0;
-  float normalized_time=0.0;
-  StopWatch sw;
-  //if an incoming note matches the pitch start a timer start timer
-  void setTimer(){
-      sw.start();
-  }
-  void stopTimer(){
-     sw.stop();
-     actual_time = sw.elapsed();
-  }
-};
+//The following deals with receiving Duration Data over Serial~~~~~~~~~
+//times for each note 
+unsigned int actual_time[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
+float normalized_time[12] = {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
 
-MIDI_CREATE_DEFAULT_INSTANCE();
-midiNote midiDataArr[12];
-
-// When MIDI in is detected the following function will set a timer to find note duration
-void MyHandleNoteOn(byte channel, byte pitch, byte velocity) {
-  if (velocity != 0){
-      int noteFound = pitch % 12;
-      midiDataArr[noteFound].setTimer();      
-  }
-}
-//then stop timer and update note duration
-void MyHandleNoteOff(byte channel, byte pitch, byte velocity) {
-  if (velocity == 0){
-      int noteFound = pitch % 12;
-      midiDataArr[noteFound].stopTimer();
+float testVar = 0.0;
+void serialEvent() {
+  if (Serial.available() == 3) {
+    byte note = Serial.read();
+    byte LSB = Serial.read();
+    byte MSB = Serial.read();
+    unsigned long noteDuration = (((unsigned long) MSB) << 8) + LSB;
+    actual_time[note] = actual_time[note] + noteDuration;
   }
 }
 
-//end MIDI~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//End Serial stuff~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 //Algorithim Thread~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Thread algThread = Thread(); //make new thread
 boolean key_change = true; //used to only draw when key changes
-//first 12 is major, last 12 is minor
-//float major_chroma[12] = {0.125,0.0,0.0,0.25,0.0,0.125,0.0,0.125,0.25,0.0,0.0,0.125};
 float major_chroma[12] = {1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
 float minor_chroma[12] = {0.0,0.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
 float min_ecludian = 9999.0;
@@ -161,6 +137,8 @@ unsigned long total_duration = 0; //in ms
 //the following selects which key is being predicted. will be form 0-23
 int predicted_key=0;
 float confidence = 0.0;
+
+
 void algorithim_callback(){
   int index;
   //first update total duration 
@@ -168,14 +146,14 @@ void algorithim_callback(){
   float current_euclidean = 0.0;
   //sum up all durations and update total_duration 
   for (int i=0;i<12;i++){
-    duration_sum = duration_sum + midiDataArr[i].actual_time;
+    duration_sum = duration_sum + actual_time[i];
   }
   total_duration = duration_sum;
   
   //normalize data
   for (int i=0; i<12;i++){
      if(total_duration != 0){
-        midiDataArr[i].normalized_time = (float)midiDataArr[i].actual_time / (float)total_duration;
+        normalized_time[i] = (float)actual_time[i] / (float)total_duration;
      }
   }
   
@@ -186,24 +164,24 @@ void algorithim_callback(){
          if (index >= 12){
           index = index - 12;
          }
-         current_euclidean = current_euclidean + pow((midiDataArr[j].normalized_time - major_chroma[index]),2);
+         current_euclidean = current_euclidean + pow((normalized_time[j] - major_chroma[index]),2);
       }
       current_euclidean = sqrt(current_euclidean);
       if(current_euclidean < min_ecludian){
         min_ecludian = current_euclidean;
         predicted_key = i;
       }
-      current_euclidean = 0; //refresh current_euclidean
+      current_euclidean = 0.0; //refresh current_euclidean
   }
 
-    //then minor
+  //then minor
   for (int i=0;  i<12; i++){
       for (int j=0;j<12;j++){
          index = i + j;
          if (index >= 12){
           index = index - 12;
          }
-         current_euclidean = current_euclidean + sqrt(pow((midiDataArr[j].normalized_time - minor_chroma[index]),2));
+         current_euclidean = current_euclidean + sqrt(pow((normalized_time[j] - minor_chroma[index]),2));
       }
       if(current_euclidean < min_ecludian){
         min_ecludian = current_euclidean;
@@ -212,7 +190,7 @@ void algorithim_callback(){
       current_euclidean = 0; //refresh current_euclidean
   }
   
-  confidence = 1 - min_ecludian;
+  confidence = 1.0 - min_ecludian;
   key_change = true; //if key changed set this true 
 }
 //end algorithim ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -273,8 +251,8 @@ void draw_back_button(){
   tft.print("Back");
   //clear old data 
   for(int i=0;i<12;i++){
-    midiDataArr[i].actual_time = 0;
-    midiDataArr[i].normalized_time = 0;
+    actual_time[i] = 0;
+    normalized_time[i] = 0.0;
   }
   min_ecludian = 9999.0;
   total_duration = 0; 
@@ -337,19 +315,11 @@ void setup() {
   tsThread.setInterval(200);
   algThread.onRun(algorithim_callback);
   algThread.setInterval(4000);
-  //configure function incoming MIDI calls 
-  MIDI.begin(MIDI_CHANNEL_OMNI); // Initialize the Midi Library all channels 
-  Serial.begin(115200); //inizlize midi over serial 
-  MIDI.setHandleNoteOn(MyHandleNoteOn);
-  MIDI.setHandleNoteOff(MyHandleNoteOff);
-  //set pitches to midi data 
-  for(int i=0;i<12;i++){
-    midiDataArr[i].notePitch = i;
-  }
+  Serial.begin(115200); //begin SErial communication  
 }
 
+
 void loop() {
-  MIDI.read(); //check for MIDI In
   //checks if threads need to be run then run all 
   if(tsThread.shouldRun()){
       tsThread.run();
@@ -379,8 +349,8 @@ void loop() {
     if(algThread.shouldRun()){
         algThread.run();
         draw_predictedKey(predicted_key);
+        //draw_confidence(testVar);
         draw_confidence(confidence);
-        //draw_confidence(min_ecludian);
         key_change == false;
         min_ecludian = 9999.0; //refresh 
     }

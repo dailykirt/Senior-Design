@@ -160,8 +160,6 @@ void setup() {
   digitalWrite(S1, LOW);
   pinMode(S0, OUTPUT);
   digitalWrite(S0, LOW);
- // pinMode(MUXENABLE, OUTPUT);
-  //digitalWrite(MUXENABLE, LOW);
 
   digitalWrite(LED, HIGH);
   delay(1000);
@@ -230,8 +228,7 @@ void sampleFSRs() {
                 noteDurationArr[j+noteOnIndex].start_time();
                 noteOn[j + noteOnIndex] = true;
               }
-              if (intensity < 450) {
-                setColor(setColorIndex + j, RED);
+              if (intensity < 450) {                setColor(setColorIndex + j, RED);
               }
               else if (intensity < 600) {
                 setColor(setColorIndex + j, GREEN);
